@@ -1,10 +1,11 @@
 const dotenv = require("dotenv");
+const mongoose = require("mongoose");
 const router = require("./routes");
 dotenv.config();
 
 const express = require("express");
 
-const start = () => {
+const start = async () => {
   const app = express();
 
   app.use(express.json());
@@ -44,3 +45,5 @@ const start = () => {
 
   app.listen(port, () => console.log(`Listening on port ${port}`));
 };
+
+start().catch(() => console.log("Error starting server"));
