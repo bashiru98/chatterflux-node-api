@@ -10,8 +10,8 @@ const openai = new Openai({ apiKey: process.env.OPENAI_API_KEY });
 
 router.post("/stream", async (req, res) => {
   // get the email of the user making the request
-  const user = req.body?.user;
-  const prompt = req.body?.prompt;
+  const user = req.query?.user;
+  const prompt = req.query?.prompt;
 
   //  if there is no  user in the request body forbid the request
   if (!user) {
