@@ -49,10 +49,50 @@ router.post("/stream", async (req, res) => {
     message: messageAcc,
     // date should be in milliseconds
     time: req?.body?.time || Date.now(),
+    prompt,
   });
 
   await message.save();
+  // end request early and continue with other logics
   res.end(); // End the response stream when all parts are sent
+  // check if there first message in the chat
+  const chat = await models.Chat.findOne({ user });
+
+  if (chat) {
+    // first check if there first message in the chat
+    const firstMessage = chat?.firstMessage;
+    if (!firstMessage) {
+      // if there is no first message in the chat update the message
+      // first summarize the prompt using gpt and update the message
+      // check if there first message in the chat
+      const chat = await models.Chat.findOne({ user });
+
+      if (chat) {
+        // first check if there first message in the chat
+        const firstMessage = chat?.firstMessage;
+        if (!firstMessage) {
+          // if there is no first message in the chat update the message
+          // first summarize the prompt using gpt and update the message
+          const summarizePromptResponse = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [
+              {
+                role: "user",
+                content:
+                  "summarize" + " " + prompt + " " + " into a nice short title",
+              },
+            ],
+            stream: false,
+          });
+
+          const firstMessage =
+            summarizePromptResponse?.choices[0]?.message?.content;
+          chat.firstMessage = firstMessage;
+          await chat.save();
+        }
+      }
+    }
+  }
 });
 
 // get all chats for a specific user
@@ -87,20 +127,20 @@ router.get("/messages/:user", async (req, res) => {
 router.post("/chats", async (req, res) => {
   try {
     const user = req.body?.user;
-    const firstMessage = req.body?.firstMessage;
+    const firstMessage = req.body?.firstMessage || "";
 
     if (!user || !firstMessage) {
       res.status(400).send("Bad Request");
       return;
     }
 
-    const chat = new models.Chat({
+    const newChat = new models.Chat({
       user,
       firstMessage,
       time: req?.body?.time || Date.now(),
     });
 
-    await chat.save();
+    await newChat.save();
 
     res.json(chat);
   } catch (error) {
@@ -118,7 +158,7 @@ router.delete("/chats/:id", async (req, res) => {
 
     res.json(deleteChat);
   } catch (error) {
-    console.error(error);
+    console.log(error);
     res.status(500).send("Internal Server Error");
   }
 });
