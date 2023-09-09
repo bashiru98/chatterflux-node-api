@@ -66,10 +66,6 @@ router.post("/stream", async (req, res) => {
     // first check if there first message in the chat
     const firstMessage = chat?.firstMessage;
     if (!firstMessage) {
-      // if there is no first message in the chat update the message
-      // first summarize the prompt using gpt and update the message
-      // check if there first message in the chat
-      // first check if there first message in the chat
       const firstMessage = chat?.firstMessage;
       if (!firstMessage) {
         // if there is no first message in the chat update the message
