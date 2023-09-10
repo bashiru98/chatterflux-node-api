@@ -20,6 +20,7 @@ router.post("/stream", async (req, res) => {
     return;
   }
 
+  let contextualPrompt = "";
   // if there is no prompt in the request body send bad request
   if (!prompt) {
     res.status(400).json("Bad Request");
@@ -28,9 +29,24 @@ router.post("/stream", async (req, res) => {
 
   if (!chatId) return res.status(400).json("chatId is required");
 
+  // get all messages for this chat
+  const messages = await models.Message.find({ chatId });
+
+  // if there are up to 3 messages in the chat concat them in descending order and add it to the the prompt
+  if (messages.length > 0) {
+    // take only last three messages
+    const lastMessages = messages.slice(messages.length - 4);
+    // for each message concat prompt and messsage
+    lastMessages.forEach((message) => {
+      contextualPrompt += " " + message.prompt + " " + message.message;
+    });
+  }
+
+  const fullPrompt = contextualPrompt + " " + prompt;
+
   const stream = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
-    messages: [{ role: "user", content: prompt }],
+    messages: [{ role: "user", content: fullPrompt }],
     stream: true,
   });
 
@@ -171,6 +187,43 @@ router.delete("/chats/:id", async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json("Internal Server Error");
+  }
+});
+
+// moderation
+router.post("/moderate", async (req, res) => {
+  try {
+    const prompt = req?.body?.prompt;
+    const endpoint = "https://api.openai.com/v1/moderations";
+
+    if (!prompt) return res.status(400).json("prompt is required");
+
+    // make a moderation request
+    const requestOptions = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        input: prompt,
+      }),
+    };
+
+    const response = await fetch(endpoint, requestOptions);
+
+    if (!response.ok) {
+      return res.status(400).json("error obtaining moderation response");
+    }
+
+    const data = await response.json();
+
+    res.status(200).json({
+      flagged: data?.results[0]?.flagged || false,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json("Internal Server Error");
   }
 });
 
